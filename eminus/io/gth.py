@@ -43,7 +43,7 @@ def read_gth(atom, charge=None, psp_path='pbe'):
         # Fix this by sorting over the charge integer numbers using the sorted key argument
         files = sorted(file_path.glob(f'{atom}-q*'), key=lambda s: int(str(s).split('-q')[-1]))
         try:
-            f_psp = pathlib.Path(files[0])
+            f_psp = pathlib.Path( files[0] )
         except IndexError:
             if atom != 'X':
                 log.warning(f'There is no GTH pseudopotential in "{file_path}" for "{atom}".')
