@@ -78,6 +78,31 @@ def L(atoms, W, ik=-1):
         Gk2 = atoms.Gk2[ik][:, None]
     return -atoms.Omega * Gk2 * W
 
+@handle_spin_gracefully
+def P(atoms, W, ik=-1):
+    """Derivative operator with k-point dependency.
+
+    This operator acts on options 3 and 5.
+
+    Reference: Comput. Phys. Commun. 128, 1.
+
+    Args:
+        atoms: Atoms object.
+        W (ndarray): Expansion coefficients of unconstrained wave functions in reciprocal space.
+
+    Keyword Args:
+        ik (int): k-point index.
+
+    Returns:
+        ndarray: The operator applied on W.
+    """
+    # Gk2 is a normal 1d row vector, reshape it so it can be applied to the column vector W
+    if len(W) == len(atoms.Gk2c[ik]):
+        Gk = np.sqrt( atoms.Gk2c[ik][:, None]) 
+    else:
+        Gk = np.sqrt( atoms.Gk2[ik][:, None] )
+    return -np.sqrt( atoms.Omega ) * Gk * W # BMW ~ Do we sqrt the volume here ? TODO
+
 
 @handle_spin_gracefully
 def Linv(atoms, W):
