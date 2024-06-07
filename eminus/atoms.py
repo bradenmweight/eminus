@@ -333,6 +333,17 @@ class Atoms:
         return self._Gk2c
 
     @property
+    def Gkcpol(self):
+        """Truncated projections of G+k-vectors into the cavity polarization direction."""
+        return self._Gkcpol
+
+    @property
+    def Gkpol(self):
+        """Non-truncated projections of G+k-vectors into the cavity polarization direction."""
+        return self._Gkpol
+
+
+    @property
     def Sf(self):
         """Structure factor per atom."""
         return self._Sf
@@ -436,7 +447,8 @@ class Atoms:
         # Build the real-space sampling
         self._r = M @ inv(np.diag(self.s)) @ self.a.T
         # Build G-vectors
-        self._G = 2 * np.pi * N @ inv(self.a)
+        self._G = 2 * np.pi * N @ inv(self.a) # BMW: G ~ (Nvec,3)
+
         # Calculate squared magnitudes of G-vectors
         self._G2 = norm(self.G, axis=1)**2
         # Calculate the G2 restriction
@@ -447,6 +459,12 @@ class Atoms:
         self._Gk2 = np.asarray([norm(self.G + self.kpts.k[ik], axis=1)**2
                                for ik in range(self.kpts.Nk)])
         self._Gk2c = [self.Gk2[ik][self._active[ik]] for ik in range(self.kpts.Nk)]
+
+        # Calculate G.polarization for QED calculation
+        if ( self.polarization is not None):
+            self._Gkpol   = np.asarray([ np.einsum("gd,d->g", self.G + self.kpts.k[ik], self.polarization) for ik in range(self.kpts.Nk)])
+            self._Gkcpol  = np.asarray([ np.einsum("gd,d->g", self.G[self._active[ik]] + self.kpts.k[ik], self.polarization) for ik in range(self.kpts.Nk)])
+
         # Calculate the structure factor per atom
         self._Sf = np.exp(1j * self.G @ self.pos.T).T
 
@@ -457,7 +475,7 @@ class Atoms:
 
     O = operators.O
     L = operators.L
-    P = operators.P
+    P_dot_polarization = operators.P_dot_polarization
     Linv = operators.Linv
     K = operators.K
     T = operators.T

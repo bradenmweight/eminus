@@ -67,6 +67,8 @@ def get_E(scf):
     scf.energies.Exc = get_Exc(scf, scf.n, scf.exc, Nspin=scf.atoms.occ.Nspin)
     scf.energies.Eloc = get_Eloc(scf, scf.n)
     scf.energies.Enonloc = get_Enonloc(scf, scf.Y)
+    
+    scf.energies.E_PP = get_E_PP(scf.atoms, scf.Y)
     return scf.energies.Etot
 
 
@@ -89,8 +91,29 @@ def get_Ekin(atoms, Y, ik):
     for spin in range(atoms.occ.Nspin):
         Ekin += -0.5 * atoms.kpts.wk[ik] * np.trace(atoms.occ.F[ik][spin] @ Y[spin].conj().T @
                                                     atoms.L(Y[spin], ik))
+    print( "P^2 Energy", np.real(Ekin) )
     return np.real(Ekin)
 
+@handle_k_reducable
+def get_E_PP(atoms, Y, ik):
+    """Calculate the kinetic energy from QED contribution
+
+    Args:
+        atoms: Atoms object.
+        Y (ndarray): Expansion coefficients of orthogonal wave functions in reciprocal space.
+        ik (int): k-point index.
+
+    Returns:
+        float: Kinetic energy in Hartree.
+    """
+    # Ekin = -0.5 Tr(F Wdag L(W))
+    Ekin = 0
+    for spin in range(atoms.occ.Nspin):
+        Ekin += -0.5 * atoms.kpts.wk[ik] * np.trace(atoms.occ.F[ik][spin] @ Y[spin].conj().T @
+                                                    atoms.P_dot_polarization(Y[spin], ik))
+    
+    print( "PP Energy", np.real(Ekin) )
+    return np.real(Ekin)
 
 def get_Ecoul(atoms, n, phi=None):
     """Calculate the Coulomb energy.

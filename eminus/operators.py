@@ -79,12 +79,10 @@ def L(atoms, W, ik=-1):
     return -atoms.Omega * Gk2 * W
 
 @handle_spin_gracefully
-def P(atoms, W, ik=-1):
-    """Derivative operator with k-point dependency.
+def P_dot_polarization(atoms, W, ik=-1):
+    """Derivative operator with k-point dependency projected into the cavity polarization.
 
     This operator acts on options 3 and 5.
-
-    Reference: Comput. Phys. Commun. 128, 1.
 
     Args:
         atoms: Atoms object.
@@ -96,12 +94,20 @@ def P(atoms, W, ik=-1):
     Returns:
         ndarray: The operator applied on W.
     """
-    # Gk2 is a normal 1d row vector, reshape it so it can be applied to the column vector W
-    if len(W) == len(atoms.Gk2c[ik]):
-        Gk = np.sqrt( atoms.Gk2c[ik][:, None]) 
+    # Gkpol is a 1d matrix (Nvec*Nk)
+    # W is a 2d matrix (Nvec,1)
+    #print( "Shape of Gkpol", np.array( atoms.Gkpol ).shape )
+    #print( "Shape of W"    , np.array( W ).shape )
+    Gkpol        = atoms.Gkpol[ik]
+    xi           = atoms.xi
+    FREQ         = atoms.FREQ
+
+    if len(W) == len(atoms.Gkcpol[ik]):
+        Gkpol = atoms.Gkcpol[ik][:, None]
     else:
-        Gk = np.sqrt( atoms.Gk2[ik][:, None] )
-    return -np.sqrt( atoms.Omega ) * Gk * W # BMW ~ Do we sqrt the volume here ? TODO
+        Gkpol = atoms.Gkpol[ik][:, None]
+    return -0.5 * xi**2 * FREQ**2 * np.sqrt( atoms.Omega ) * Gkpol**2 * W
+
 
 
 @handle_spin_gracefully

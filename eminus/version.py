@@ -24,6 +24,7 @@ def info():
           '\n\n--- Version infos ---'
           f'\npython     : {sys.version.split()[0]}'
           f'\neminus     : {__version__}')
+    return None
     for pkg in dependencies + extras + dev:
         try:
             module = importlib.import_module(pkg)
