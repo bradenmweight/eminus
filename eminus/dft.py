@@ -214,10 +214,17 @@ def H(scf, ik, spin, W, dn_spin=None, phi=None, vxc=None, vsigma=None, vtau=None
     Veff = scf.Vloc + atoms.Jdag(atoms.O(Gvxc + phi))
     Vnonloc_psi = calc_Vnonloc(scf, ik, spin, W)
     Vtau_psi = calc_Vtau(scf, ik, spin, W, vtau)
+
+    # Add P.P for QED kinetic energy rescaling
+    Ppsi = atoms.P(W[ik][spin], ik)
+    Ppsi = atoms.polarization.dot( Ppsi ) 
+    T_PP = -0.5 * atoms.xi**2 * np.outer( Ppsi, Ppsi )
+    T_PP = T_PP - T_PP[ np.diag_indices_from(T_PP) ] # Remove standard Kinetic energy from diagonal
+
     # H = Vkin + Idag(diag(Veff))I + Vnonloc (+ Vtau)
     # Diag(a) * B can be written as a * B if a is a column vector
     return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(W[ik][spin], ik), ik) + Vnonloc_psi + \
-        Vtau_psi
+        Vtau_psi + T_PP
 
 
 def H_precompute(scf, W):

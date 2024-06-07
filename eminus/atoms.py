@@ -53,7 +53,7 @@ class Atoms:
             None will use the global logger verbosity value.
     """
     def __init__(self, atom, pos, ecut=30, a=20, spin=None, charge=0, unrestricted=None,
-                 center=False, verbose=None):
+                 center=False, verbose=None, polarization=None, xi=0.0, FREQ=0.0):
         """Initialize the Atoms object."""
         # Set the input parameters (the ordering is important)
         self.log = create_logger(self)     #: Logger object.
@@ -72,6 +72,12 @@ class Atoms:
         # Initialize other attributes
         self.occ.fill()                    #: Fill states from the given input.
         self.is_built = False              #: Determines the Atoms object build status.
+
+        # Add QED parameters here in atoms object
+        self.polarization = polarization   #: Polarization of the cavity mode. TODO How to define most simply to connect with G vectors ?
+                # We should manually calculate dot product with add G vectors and store polarization as this array TODO
+        self.xi = xi                       #: QED coupling constant.
+        self.FREQ = FREQ                   #: Frequency of cavity mode (Upper case Omega in Taylor PRB 2024)
 
     # ### Class properties ###
 
@@ -451,6 +457,7 @@ class Atoms:
 
     O = operators.O
     L = operators.L
+    P = operators.P
     Linv = operators.Linv
     K = operators.K
     T = operators.T
