@@ -107,13 +107,17 @@ def get_E_PP(atoms, Y, ik):
         float: Kinetic energy in Hartree.
     """
     # Ekin = -0.5 Tr(F Wdag L(W))
-    Ekin = 0
+    EPP = 0
     for spin in range(atoms.occ.Nspin):
-        Ekin += -0.5 * atoms.kpts.wk[ik] * np.trace(atoms.occ.F[ik][spin] @ Y[spin].conj().T @
-                                                    atoms.P_dot_polarization(Y[spin], ik))
-    
-    print( "PP Energy", np.real(Ekin) )
-    return np.real(Ekin)
+        P_AVE =  np.einsum( "Gi,Gi->", np.conjugate(Y[spin]), atoms.P_dot_polarization(Y[spin], ik) ) # Average momentum/current for all particles
+        P_i   = atoms.P_dot_polarization(Y[spin], ik)
+        T_PP  = -P_i * (P_AVE - P_i)
+        T_PP *= atoms.A0 ** 2 / atoms.FREQ 
+
+        EPP += atoms.kpts.wk[ik] * np.trace( atoms.occ.F[ik][spin] @ Y[spin].conj().T @ T_PP )
+
+    print( "PP Energy", np.real(EPP) )
+    return np.real(EPP)
 
 def get_Ecoul(atoms, n, phi=None):
     """Calculate the Coulomb energy.

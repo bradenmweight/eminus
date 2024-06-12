@@ -99,14 +99,12 @@ def P_dot_polarization(atoms, W, ik=-1):
     #print( "Shape of Gkpol", np.array( atoms.Gkpol ).shape )
     #print( "Shape of W"    , np.array( W ).shape )
     Gkpol        = atoms.Gkpol[ik]
-    xi           = atoms.xi
-    FREQ         = atoms.FREQ
 
     if len(W) == len(atoms.Gkcpol[ik]):
         Gkpol = atoms.Gkcpol[ik][:, None]
     else:
         Gkpol = atoms.Gkpol[ik][:, None]
-    return -0.5 * xi**2 * FREQ**2 * np.sqrt( atoms.Omega ) * Gkpol**2 * W
+    return np.sqrt( atoms.Omega ) * Gkpol * W
 
 
 
