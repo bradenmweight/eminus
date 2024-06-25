@@ -231,6 +231,7 @@ def H(scf, ik, spin, W, dn_spin=None, phi=None, vxc=None, vsigma=None, vtau=None
         print("|T_PP|", np.linalg.norm(T_PP))
         print("<P>", P_AVE)
         # TODO -- Could add electron-nuclear P.P term here as well as nuclear-nuclear P.P term, each with factor z_i z_j / (m_i m_j)
+        # TODO -- Neglection of which is IDENTICAL to the Born-Oppenheimer approximation
         return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(W[ik][spin], ik), ik) + Vnonloc_psi + Vtau_psi + T_PP
     else:
         return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(W[ik][spin], ik), ik) + Vnonloc_psi + Vtau_psi
