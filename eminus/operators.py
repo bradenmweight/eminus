@@ -104,7 +104,7 @@ def P_dot_polarization(atoms, W, ik=-1):
         Gkpol = atoms.Gkcpol[ik][:, None]
     else:
         Gkpol = atoms.Gkpol[ik][:, None]
-    return np.sqrt( atoms.Omega ) * Gkpol * W
+    return np.sqrt(atoms.Omega) * Gkpol * W
 
 
 

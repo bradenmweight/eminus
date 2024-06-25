@@ -216,23 +216,24 @@ def H(scf, ik, spin, W, dn_spin=None, phi=None, vxc=None, vsigma=None, vtau=None
     Vnonloc_psi = calc_Vnonloc(scf, ik, spin, W)
     Vtau_psi = calc_Vtau(scf, ik, spin, W, vtau)
 
-    # Add P.P for QED kinetic energy rescaling
-    ## <P> = \sum <\phi_i | P |\phi_i>
-    ## Proper QM Momentum Matrix Elements: "Gi,GG,Gj->ij"
-    ## <P>_i = <P> - P_i
-    ## T_PP = P_i * <P>_i = P_i * (<P> - P_i)
-    print( "W", np.shape(W[ik][spin]) )
-    P_AVE =  np.einsum( "Gi,Gi->", np.conjugate(W[ik][spin]), atoms.P_dot_polarization(W[ik][spin], ik) ) # Average momentum/current for all particles
-    P_i   = atoms.P_dot_polarization(W[ik][spin], ik)
-    T_PP  = -P_i * (P_AVE - P_i)
-    T_PP *= atoms.A0 ** 2 / atoms.FREQ 
-    # TODO -- Could add electron-nuclear P.P term here as well as nuclear-nuclear P.P term, each with factor z_i z_j / (m_i m_j)
-
-    # H = Vkin + Idag(diag(Veff))I + Vnonloc (+ Vtau)
-    # Diag(a) * B can be written as a * B if a is a column vector
-
-    return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(W[ik][spin], ik), ik) + Vnonloc_psi + \
-        Vtau_psi + T_PP
+    if ( atoms.polarization is not None ):
+        # Add P.P for QED kinetic energy rescaling
+        ## <P> = \sum <\phi_i | P |\phi_i>
+        ## Proper QM Momentum Matrix Elements: "Gi,GG,Gj->ij"
+        ## <P>_i = <P> - P_i
+        ## T_PP = P_i * <P>_i = P_i * (<P> - P_i)
+        P_AVE  = np.einsum( "Gi,Gi->", np.conjugate(W[ik][spin]), atoms.P_dot_polarization(W[ik][spin], ik) ) # Average momentum/current for all particles
+        #P_AVE /= np.trace( atoms.occ.F[ik][spin] ) # BMW: Total Number of Electrons, not orbitals. Which is correct ?
+        P_i    = atoms.P_dot_polarization(W[ik][spin], ik)
+        T_PP   = -P_i * P_AVE # -P_i * (P_AVE - P_i) # BMW: For one electron, this term should still exist. Therefore, we cannot subtract it.
+        T_PP  *= atoms.A0 ** 2 / atoms.FREQ 
+        print("|T_KIN|", np.linalg.norm(Vkin_psi))
+        print("|T_PP|", np.linalg.norm(T_PP))
+        print("<P>", P_AVE)
+        # TODO -- Could add electron-nuclear P.P term here as well as nuclear-nuclear P.P term, each with factor z_i z_j / (m_i m_j)
+        return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(W[ik][spin], ik), ik) + Vnonloc_psi + Vtau_psi + T_PP
+    else:
+        return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(W[ik][spin], ik), ik) + Vnonloc_psi + Vtau_psi
 
 
 def H_precompute(scf, W):

@@ -68,7 +68,11 @@ def get_E(scf):
     scf.energies.Eloc = get_Eloc(scf, scf.n)
     scf.energies.Enonloc = get_Enonloc(scf, scf.Y)
     
-    scf.energies.E_PP = get_E_PP(scf.atoms, scf.Y)
+    if ( scf.atoms.polarization is not None ):
+        scf.energies.E_PP = get_E_PP(scf.atoms, scf.Y)
+    else:
+        scf.energies.E_PP = 0.0
+
     return scf.energies.Etot
 
 
@@ -109,10 +113,11 @@ def get_E_PP(atoms, Y, ik):
     # Ekin = -0.5 Tr(F Wdag L(W))
     EPP = 0
     for spin in range(atoms.occ.Nspin):
-        P_AVE =  np.einsum( "Gi,Gi->", np.conjugate(Y[spin]), atoms.P_dot_polarization(Y[spin], ik) ) # Average momentum/current for all particles
-        P_i   = atoms.P_dot_polarization(Y[spin], ik)
-        T_PP  = -P_i * (P_AVE - P_i)
-        T_PP *= atoms.A0 ** 2 / atoms.FREQ 
+        P_AVE  =  np.einsum( "Gi,Gi->", np.conjugate(Y[spin]), atoms.P_dot_polarization(Y[spin], ik) ) # Average momentum/current for all particles
+        #P_AVE /= np.trace( atoms.occ.F[ik][spin] ) # BMW: Total Number of Electrons, not orbitals. Which is correct ?
+        P_i    = atoms.P_dot_polarization(Y[spin], ik)
+        T_PP   = -P_i * P_AVE #-P_i * (P_AVE - P_i) # BMW: For one electron, this term should still exist. Therefore, we cannot subtract it.
+        T_PP  *= atoms.A0 ** 2 / atoms.FREQ
 
         EPP += atoms.kpts.wk[ik] * np.trace( atoms.occ.F[ik][spin] @ Y[spin].conj().T @ T_PP )
 
