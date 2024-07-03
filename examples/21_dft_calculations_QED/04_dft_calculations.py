@@ -5,9 +5,9 @@ from eminus import Atoms, SCF, config, dft
 
 config.threads = 2
 
-polarization = np.array([1,1,1])/np.sqrt(3)
-FREQ         = 0.01 # a.u.
-A0_LIST      = np.arange( 0.0, 0.11, 0.01 ) # a.u.
+polarization = np.array([0,0,1])#/np.sqrt(3)
+FREQ         = 0.1 # a.u.
+A0_LIST      = np.array([0.0, 0.5])#np.arange( 0.0, 0.5+0.1, 0.1 ) # a.u.
 E            = np.zeros( len(A0_LIST) )
 
 psi = 0

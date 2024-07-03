@@ -106,7 +106,35 @@ def P_dot_polarization(atoms, W, ik=-1):
         Gkpol = atoms.Gkpol[ik][:, None]
     return np.sqrt(atoms.Omega) * Gkpol * W
 
+@handle_spin_gracefully
+def V_QED_phase(atoms, W, ik=-1):
+    """DESCRIPTION HERE
 
+    This operator acts on options 3 and 5.
+
+    Args:
+        atoms: Atoms object.
+        W (ndarray): Expansion coefficients of unconstrained wave functions in reciprocal space.
+
+    Keyword Args:
+        ik (int): k-point index.
+
+    Returns:
+        ndarray: The operator applied on W.
+    """
+    Gkpol        = atoms.Gkpol[ik]
+    if len(W) == len(atoms.Gkcpol[ik]):
+        Gkpol = atoms.Gkcpol[ik][:, None]
+    else:
+        Gkpol = atoms.Gkpol[ik][:, None]
+
+    A0   = atoms.A0
+    FREQ = atoms.FREQ 
+    e_fac = ( np.exp(1) + 1/np.exp(1) ) / 2
+
+    QED_PHASE = -1j * Gkpol * A0 / FREQ**2
+
+    return QED_PHASE[:,None] * W
 
 @handle_spin_gracefully
 def Linv(atoms, W):

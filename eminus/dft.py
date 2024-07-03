@@ -212,11 +212,12 @@ def H(scf, ik, spin, W, dn_spin=None, phi=None, vxc=None, vsigma=None, vtau=None
     # Veff = Jdag(Vion) + Jdag(O(J(vxc))) + Jdag(O(phi))
     # We get the full potential in the functional definition (different to the DFT++ notation)
     # Normally Vxc = Jdag(O(J(exc))) + diag(exc') Jdag(O(J(n))) (for LDA functionals)
-    Veff = scf.Vloc + atoms.Jdag(atoms.O(Gvxc + phi))
     Vnonloc_psi = calc_Vnonloc(scf, ik, spin, W)
-    Vtau_psi = calc_Vtau(scf, ik, spin, W, vtau)
+    Vtau_psi    = calc_Vtau(scf, ik, spin, W, vtau)
+    Veff        = scf.Vloc + atoms.Jdag(atoms.O(Gvxc + phi))
 
     if ( atoms.polarization is not None ):
+
         # Add P.P for QED kinetic energy rescaling
         ## <P> = \sum <\phi_i | P |\phi_i>
         ## Proper QM Momentum Matrix Elements: "Gi,GG,Gj->ij"
@@ -229,10 +230,13 @@ def H(scf, ik, spin, W, dn_spin=None, phi=None, vxc=None, vsigma=None, vtau=None
         T_PP  *= atoms.A0 ** 2 / atoms.FREQ 
         print("|T_KIN|", np.linalg.norm(Vkin_psi))
         print("|T_PP|", np.linalg.norm(T_PP))
+        print("|Pi|", np.linalg.norm(P_i))
         print("<P>", P_AVE)
         # TODO -- Could add electron-nuclear P.P term here as well as nuclear-nuclear P.P term, each with factor z_i z_j / (m_i m_j)
         # TODO -- Neglection of which is IDENTICAL to the Born-Oppenheimer approximation
-        return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(W[ik][spin], ik), ik) + Vnonloc_psi + Vtau_psi + T_PP
+        QED_PHASE_on_W = atoms.V_QED_phase(atoms, W, ik) # exp @ W
+        return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(QED_PHASE_on_W, ik), ik) + Vnonloc_psi + Vtau_psi + T_PP
+        #return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(     W[ik][spin], ik), ik) + Vnonloc_psi + Vtau_psi + T_PP
     else:
         return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(W[ik][spin], ik), ik) + Vnonloc_psi + Vtau_psi
 
