@@ -51,8 +51,7 @@ def get_n_total(atoms, Y, n_spin=None):
     Yrs = atoms.I(Y)
     for ik in range(atoms.kpts.Nk):
         for spin in range(atoms.occ.Nspin):
-            n += np.sum(atoms.occ.f[ik, spin] * atoms.kpts.wk[ik] *
-                        np.real(Yrs[ik][spin].conj() * Yrs[ik][spin]), axis=1)
+            n += np.sum(atoms.occ.f[ik, spin] * atoms.kpts.wk[ik] * np.real(Yrs[ik][spin].conj() * Yrs[ik][spin]), axis=1)
     return n
 
 
@@ -214,7 +213,8 @@ def H(scf, ik, spin, W, dn_spin=None, phi=None, vxc=None, vsigma=None, vtau=None
     # Normally Vxc = Jdag(O(J(exc))) + diag(exc') Jdag(O(J(n))) (for LDA functionals)
     Vnonloc_psi = calc_Vnonloc(scf, ik, spin, W)
     Vtau_psi    = calc_Vtau(scf, ik, spin, W, vtau)
-    Veff        = scf.Vloc + atoms.Jdag(atoms.O(Gvxc + phi))
+    V_loc       = scf.Vloc
+    V_coul      = atoms.Jdag(atoms.O(Gvxc + phi))
 
     if ( atoms.polarization is not None ):
 
@@ -234,10 +234,16 @@ def H(scf, ik, spin, W, dn_spin=None, phi=None, vxc=None, vsigma=None, vtau=None
         print("<P>", P_AVE)
         # TODO -- Could add electron-nuclear P.P term here as well as nuclear-nuclear P.P term, each with factor z_i z_j / (m_i m_j)
         # TODO -- Neglection of which is IDENTICAL to the Born-Oppenheimer approximation
-        QED_PHASE_on_W = atoms.V_QED_phase(atoms, W, ik) # exp @ W
-        return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(QED_PHASE_on_W, ik), ik) + Vnonloc_psi + Vtau_psi + T_PP
-        #return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(     W[ik][spin], ik), ik) + Vnonloc_psi + Vtau_psi + T_PP
+        QED_PHASE_on_W = atoms.V_QED_phase(W[ik][spin], ik) # exp @ W
+        print( "Shape of QED PHASE on W", QED_PHASE_on_W.shape )
+        return Vkin_psi \
+                + atoms.Idag(V_coul[:, None] * atoms.I(W[ik][spin], ik), ik) \
+                + atoms.Idag(V_loc [:, None] * atoms.I(QED_PHASE_on_W, ik), ik) \
+                + Vnonloc_psi \
+                + Vtau_psi \
+                + T_PP
     else:
+        Veff = scf.Vloc + atoms.Jdag(atoms.O(Gvxc + phi))
         return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(W[ik][spin], ik), ik) + Vnonloc_psi + Vtau_psi
 
 

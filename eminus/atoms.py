@@ -476,6 +476,7 @@ class Atoms:
     O = operators.O
     L = operators.L
     P_dot_polarization = operators.P_dot_polarization
+    V_QED_phase = operators.V_QED_phase
     Linv = operators.Linv
     K = operators.K
     T = operators.T

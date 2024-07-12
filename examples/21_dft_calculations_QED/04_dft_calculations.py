@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 
 from eminus import Atoms, SCF, config, dft
 
-config.threads = 2
+config.threads = 1
 
 polarization = np.array([0,0,1])#/np.sqrt(3)
 FREQ         = 0.1 # a.u.

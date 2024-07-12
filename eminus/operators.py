@@ -124,17 +124,34 @@ def V_QED_phase(atoms, W, ik=-1):
     """
     Gkpol        = atoms.Gkpol[ik]
     if len(W) == len(atoms.Gkcpol[ik]):
-        Gkpol = atoms.Gkcpol[ik][:, None]
+        Gkpol = atoms.Gkcpol[ik]
     else:
-        Gkpol = atoms.Gkpol[ik][:, None]
+        Gkpol = atoms.Gkpol[ik]
 
-    A0   = atoms.A0
-    FREQ = atoms.FREQ 
-    e_fac = ( np.exp(1) + 1/np.exp(1) ) / 2
+    A0    = atoms.A0
+    FREQ  = atoms.FREQ
+    xi    = np.sqrt(2) / FREQ**(3/2) * A0
 
-    QED_PHASE = -1j * Gkpol * A0 / FREQ**2
+    kp        = Gkpol # Choose G to be the basis
+    QED_PHASE = np.exp( -kp**2 * xi**2 / 4 / FREQ )
+    QED_PHASE = np.roll( QED_PHASE, len(kp//2) )
 
-    return QED_PHASE[:,None] * W
+    W     = np.roll( W, len(kp//2), axis=0 )
+    W_tmp = np.copy(W)
+    for o in range( len(W[0,:]) ):
+        #print("Convolving orbital ", o, " of ", len(W[0,:]) )
+        #W_tmp[:,o] = np.convolve( W[:,o], QED_PHASE, mode='same' )
+        W_tmp[:,o] = np.convolve( QED_PHASE, W[:,o], mode='same' ) / np.sqrt( len(QED_PHASE) )
+    W_tmp = np.roll( W_tmp, -len(kp//2), axis=0)
+
+    print("Shape of W", W_tmp.shape)
+    return W_tmp
+
+
+
+
+
+    return np.einsum( "G,Go->Go", QED_PHASE[:], W[:,:] )
 
 @handle_spin_gracefully
 def Linv(atoms, W):

@@ -62,10 +62,10 @@ def get_E(scf):
     Returns:
         float: Total energy.
     """
-    scf.energies.Ekin = get_Ekin(scf.atoms, scf.Y)
-    scf.energies.Ecoul = get_Ecoul(scf.atoms, scf.n, scf.phi)
-    scf.energies.Exc = get_Exc(scf, scf.n, scf.exc, Nspin=scf.atoms.occ.Nspin)
-    scf.energies.Eloc = get_Eloc(scf, scf.n)
+    scf.energies.Ekin    = get_Ekin(scf.atoms, scf.Y)
+    scf.energies.Ecoul   = get_Ecoul(scf.atoms, scf.n, scf.phi)
+    scf.energies.Exc     = get_Exc(scf, scf.n, scf.exc, Nspin=scf.atoms.occ.Nspin)
+    scf.energies.Eloc    = get_Eloc(scf, scf.n)
     scf.energies.Enonloc = get_Enonloc(scf, scf.Y)
     
     if ( scf.atoms.polarization is not None ):
@@ -93,8 +93,7 @@ def get_Ekin(atoms, Y, ik):
     # Ekin = -0.5 Tr(F Wdag L(W))
     Ekin = 0
     for spin in range(atoms.occ.Nspin):
-        Ekin += -0.5 * atoms.kpts.wk[ik] * np.trace(atoms.occ.F[ik][spin] @ Y[spin].conj().T @
-                                                    atoms.L(Y[spin], ik))
+        Ekin += -0.5 * atoms.kpts.wk[ik] * np.trace(atoms.occ.F[ik][spin] @ Y[spin].conj().T @ atoms.L(Y[spin], ik))
     print( "P^2 Energy", np.real(Ekin) )
     return np.real(Ekin)
 
@@ -123,6 +122,8 @@ def get_E_PP(atoms, Y, ik):
 
     print( "PP Energy", np.real(EPP) )
     return np.real(EPP)
+
+
 
 def get_Ecoul(atoms, n, phi=None):
     """Calculate the Coulomb energy.
@@ -170,7 +171,6 @@ def get_Exc(scf, n, exc=None, n_spin=None, dn_spin=None, tau=None, Nspin=2):
     # Exc = (J(n))dag O(J(exc))
     return np.real(n @ atoms.Jdag(atoms.O(atoms.J(exc))))
 
-
 def get_Eloc(scf, n):
     """Calculate the local energy contribution.
 
@@ -183,7 +183,37 @@ def get_Eloc(scf, n):
     Returns:
         float: Local energy contribution in Hartree.
     """
-    return np.real(np.vdot(scf.Vloc, n))
+    atoms = scf.atoms
+    # Yrs = atoms.I( Y ) # Reciprocal to real space
+
+    if ( atoms.polarization is not None ):
+        Nk, NG    = atoms.Gkpol.shape
+        A0        = atoms.A0
+        FREQ      = atoms.FREQ
+        xi        = np.sqrt(2) / FREQ**(3/2) * A0
+
+
+        # QED_PHASE_FULL = np.zeros( (NG * Nk) ) # This is length of n
+        # for ik in range( Nk ):
+        #     Gkpol     = atoms.Gkpol[ik]
+        #     kp        = Gkpol # Choose G to be the basis
+        #     QED_PHASE = np.exp( -kp**2 * xi**2 / 4 / FREQ )
+        
+        QED_PHASE     = np.exp( -atoms.Gkpol**2 * xi**2 / 4 / FREQ ) # (Nk,NG)
+
+        V_loc     = atoms.Idag( scf.Vloc, full=True ) # Real to reciprocal space
+        V_loc     = V_loc * QED_PHASE.flatten()       # Apply phase in k-space
+        V_loc     = atoms.I(V_loc)                    # Reciprocal to real space
+
+        return np.real( np.vdot(V_loc, n) )
+    
+    else:
+        # n = np.zeros( atoms.Ns )
+        # for ik in range(atoms.kpts.Nk):
+        #     for spin in range(atoms.occ.Nspin):
+        #         print( spin, atoms.occ.f[ik, spin].shape, atoms.kpts.wk[ik], Yrs[ik][spin].shape )
+        #         n += np.sum(atoms.occ.f[ik, spin] * atoms.kpts.wk[ik] * np.real(Yrs[ik][spin].conj() * Yrs[ik][spin]), axis=1)
+        return np.real(np.vdot(scf.Vloc, n))
 
 
 @handle_k_reducable
