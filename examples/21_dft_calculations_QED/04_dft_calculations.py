@@ -10,29 +10,34 @@ FREQ         = 0.1 # a.u.
 A0_LIST      = np.array([0.0, 0.5])#np.arange( 0.0, 0.5+0.1, 0.1 ) # a.u.
 E            = np.zeros( len(A0_LIST) )
 
-psi = 0
+opt = None #{'pccg': 100}
+xc = 'lda,pw'
+pot = 'gth'
+guess = 'random'
+etol = 1e-12 # 1e-8
+gradtol = 1e-11 # 1e-7
+sic = False
+disp = False
+verbose = 4
+
+# Get bare electronic wavefunctions wtithout cavity code influence
+atoms = Atoms( ['H','H'], [[0,0,0],[0,0,0.8]], ecut=40 )
+scf = SCF(atoms=atoms, xc=xc, pot=pot, guess=guess, etol=etol, gradtol=gradtol, opt=opt,
+            sic=sic, disp=disp, verbose=verbose)
+etot = scf.run()
+psi = dft.get_psi(scf, scf.W)
 
 for A0i,A0 in enumerate( A0_LIST ):
 
     print("\n\n Working on A0 = %1.3f" % A0)
 
-    opt = None #{'pccg': 100}
-    xc = 'lda,pw'
-    pot = 'gth'
-    guess = 'random'
-    etol = 1e-12 # 1e-8
-    gradtol = 1e-11 # 1e-7
-    sic = False
-    disp = False
-    verbose = 4
     atoms = Atoms( ['H','H'], [[0,0,0],[0,0,0.8]], ecut=40, FREQ=FREQ, A0=A0, polarization=polarization )
     scf = SCF(atoms=atoms, xc=xc, pot=pot, guess=guess, etol=etol, gradtol=gradtol, opt=opt,
             sic=sic, disp=disp, verbose=verbose)
-    if ( A0i >= 1 ):
-        scf.W = psi
-
+    
+    scf.W = psi
     etot = scf.run()
-    psi = dft.get_psi(scf, scf.W)
+    #####psi = dft.get_psi(scf, scf.W)
 
     print(f'\nSCF ENERGY = {etot} a.u.')
     E[A0i] = etot

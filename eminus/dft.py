@@ -172,6 +172,72 @@ def get_grad(scf, ik, spin, W, **kwargs):
                                 multi_dot([OW, U12, Q(Ht @ F - F @ Ht, U)]))
 
 
+def get_H_QED( atoms, ik, spin, W, Vkin_psi, Vnonloc_psi, Vtau_psi, V_loc, V_coul ):
+
+    #Veff = V_loc + V_coul
+    #return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(W, ik), ik) + Vnonloc_psi + Vtau_psi
+
+    # Add P.P for QED kinetic energy rescaling
+    ## <P> = \sum <\phi_i | P |\phi_i>
+    ## Proper QM Momentum Matrix Elements: "Gi,GG,Gj->ij"
+    ## <P>_i = <P> - P_i
+    ## T_PP = P_i * <P>_i = P_i * (<P> - P_i)
+    P_AVE  = np.einsum( "Gi,Gi->", np.conjugate(W), atoms.P_dot_polarization(W, ik) ) # Average momentum/current for all particles
+    #P_AVE /= np.trace( atoms.occ.F[ik][spin] ) # BMW: Total Number of Electrons, not orbitals. Which is correct ?
+    P_i    = atoms.P_dot_polarization(W, ik)
+    T_PP   = -P_i * P_AVE # -P_i * (P_AVE - P_i) # BMW: For one electron, this term should still exist. Therefore, we cannot subtract it.
+    T_PP  *= atoms.A0 ** 2 / atoms.FREQ 
+    print("|T_KIN|", np.linalg.norm(Vkin_psi))
+    print("|T_PP|", np.linalg.norm(T_PP))
+    print("|Pi|", np.linalg.norm(P_i))
+    print("<P>", P_AVE)
+    # TODO -- Could add electron-nuclear P.P term here as well as nuclear-nuclear P.P term, each with factor z_i z_j / (m_i m_j)
+    # TODO -- Neglection of which is IDENTICAL to the Born-Oppenheimer approximation
+    #QED_PHASE_on_W = atoms.V_QED_phase(W[ik][spin], ik) # exp @ W
+    #print( "Shape of QED PHASE on W", QED_PHASE_on_W.shape )
+    #print( "Shape of QED PHASE on I(W)", atoms.I(QED_PHASE_on_W, ik).shape )
+    
+
+    from scipy.fft import fftn, ifftn
+
+    A0        = atoms.A0
+    FREQ      = atoms.FREQ
+    xi        = np.sqrt(2) / FREQ**(3/2) * A0   
+    
+    if len(W) == len(atoms.Gkcpol[ik]):
+        Gkpol = atoms.Gkcpol[ik][:]
+    else:
+        Gkpol = atoms.Gkpol[ik][:]
+
+    QED_PHASE = np.exp( -Gkpol**2 * xi**2 / 4 / FREQ ) # (Nk,NG)
+    
+    #V_loc = atoms.J( V_loc, ik )           # 0: Real to reciprocal space
+    V_loc = fftn( V_loc, norm='forward' )   # 0: Real to reciprocal space
+    V_loc = V_loc[atoms.active[ik]] * QED_PHASE               # 1: Apply phase to local potential in reciprocal space
+    #V_loc = atoms.Jdag( V_loc, ik )        # 2: Back to real space
+    V_loc = ifftn( V_loc, norm='forward' )  # 2: Back to real space
+    W_tmp = np.copy(W)
+    for o in range( len(W[0,:]) ):
+        W_tmp[:,o] = ifftn( W[:,o], norm='forward' ) # *1/n
+    
+    V_loc = V_loc[:,None] * W_tmp
+    V_loc_tmp1 = np.copy(V_loc)
+    for o in range( len(V_loc[0,:]) ):
+        V_loc_tmp1[:,o] = fftn( V_loc[:,o], norm='forward' ) # *n
+    V_loc = V_loc_tmp1
+    
+    #V_loc = V_loc * atoms.I( W, ik )        # 2: Back to real space
+    #V_loc = atoms.Idag( V_loc, ik )         # 3: Real to reciprocal space (not in full space)
+    
+
+    return Vkin_psi \
+            + atoms.Idag(V_coul[:, None] * atoms.I(W, ik), ik) \
+            + V_loc \
+            + Vnonloc_psi \
+            + Vtau_psi \
+            + T_PP
+
+
 def H(scf, ik, spin, W, dn_spin=None, phi=None, vxc=None, vsigma=None, vtau=None):
     """Left-hand side of the eigenvalue equation.
 
@@ -217,31 +283,8 @@ def H(scf, ik, spin, W, dn_spin=None, phi=None, vxc=None, vsigma=None, vtau=None
     V_coul      = atoms.Jdag(atoms.O(Gvxc + phi))
 
     if ( atoms.polarization is not None ):
+        return get_H_QED( atoms, ik, spin, W[ik][spin], Vkin_psi, Vnonloc_psi, Vtau_psi, V_loc, V_coul )
 
-        # Add P.P for QED kinetic energy rescaling
-        ## <P> = \sum <\phi_i | P |\phi_i>
-        ## Proper QM Momentum Matrix Elements: "Gi,GG,Gj->ij"
-        ## <P>_i = <P> - P_i
-        ## T_PP = P_i * <P>_i = P_i * (<P> - P_i)
-        P_AVE  = np.einsum( "Gi,Gi->", np.conjugate(W[ik][spin]), atoms.P_dot_polarization(W[ik][spin], ik) ) # Average momentum/current for all particles
-        #P_AVE /= np.trace( atoms.occ.F[ik][spin] ) # BMW: Total Number of Electrons, not orbitals. Which is correct ?
-        P_i    = atoms.P_dot_polarization(W[ik][spin], ik)
-        T_PP   = -P_i * P_AVE # -P_i * (P_AVE - P_i) # BMW: For one electron, this term should still exist. Therefore, we cannot subtract it.
-        T_PP  *= atoms.A0 ** 2 / atoms.FREQ 
-        print("|T_KIN|", np.linalg.norm(Vkin_psi))
-        print("|T_PP|", np.linalg.norm(T_PP))
-        print("|Pi|", np.linalg.norm(P_i))
-        print("<P>", P_AVE)
-        # TODO -- Could add electron-nuclear P.P term here as well as nuclear-nuclear P.P term, each with factor z_i z_j / (m_i m_j)
-        # TODO -- Neglection of which is IDENTICAL to the Born-Oppenheimer approximation
-        QED_PHASE_on_W = atoms.V_QED_phase(W[ik][spin], ik) # exp @ W
-        print( "Shape of QED PHASE on W", QED_PHASE_on_W.shape )
-        return Vkin_psi \
-                + atoms.Idag(V_coul[:, None] * atoms.I(W[ik][spin], ik), ik) \
-                + atoms.Idag(V_loc [:, None] * atoms.I(QED_PHASE_on_W, ik), ik) \
-                + Vnonloc_psi \
-                + Vtau_psi \
-                + T_PP
     else:
         Veff = scf.Vloc + atoms.Jdag(atoms.O(Gvxc + phi))
         return Vkin_psi + atoms.Idag(Veff[:, None] * atoms.I(W[ik][spin], ik), ik) + Vnonloc_psi + Vtau_psi

@@ -198,13 +198,19 @@ def get_Eloc(scf, n):
         #     Gkpol     = atoms.Gkpol[ik]
         #     kp        = Gkpol # Choose G to be the basis
         #     QED_PHASE = np.exp( -kp**2 * xi**2 / 4 / FREQ )
-        
+        from scipy.fft import fftn, ifftn
         QED_PHASE     = np.exp( -atoms.Gkpol**2 * xi**2 / 4 / FREQ ) # (Nk,NG)
 
-        V_loc     = atoms.Idag( scf.Vloc, full=True ) # Real to reciprocal space
-        V_loc     = V_loc * QED_PHASE.flatten()       # Apply phase in k-space
-        V_loc     = atoms.I(V_loc)                    # Reciprocal to real space
+        V_loc  = fftn( scf.Vloc, norm='forward' )   # Real to reciprocal space
+        V_loc  = V_loc * QED_PHASE.flatten()     # Apply phase in k-space
+        V_loc  = ifftn( V_loc, norm='forward' )   # Reciprocal to real space
 
+
+        #V_loc     = atoms.Idag( scf.Vloc, full=True ) # Real to reciprocal space
+        #V_loc     = V_loc * QED_PHASE.flatten()       # Apply phase in k-space
+        #V_loc     = atoms.I(V_loc)                    # Reciprocal to real space
+
+        #return np.real( np.vdot(scf.Vloc, n) )
         return np.real( np.vdot(V_loc, n) )
     
     else:

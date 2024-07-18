@@ -144,6 +144,20 @@ def V_QED_phase(atoms, W, ik=-1):
         W_tmp[:,o] = np.convolve( QED_PHASE, W[:,o], mode='same' ) / np.sqrt( len(QED_PHASE) )
     W_tmp = np.roll( W_tmp, -len(kp//2), axis=0)
 
+
+    # QED_PHASE = np.exp( -atoms.Gkpol**2 * xi**2 / 4 / FREQ ) # (Nk,NG)
+    # W     = np.roll( W, len(kp//2), axis=0 )
+    # W_tmp = np.copy(W)
+    # for o in range( len(W[0,:]) ): # Loop over orbitals
+    #     #W_tmp[:,o] = atoms.Idag( W_tmp[:,o], full=True ) # Real to reciprocal space
+
+
+    # V_loc     = atoms.Idag( scf.Vloc, full=True ) # Real to reciprocal space
+    # V_loc     = V_loc * QED_PHASE.flatten()       # Apply phase in k-space
+    # V_loc     = atoms.I(V_loc)                    # Reciprocal to real space
+
+
+
     print("Shape of W", W_tmp.shape)
     return W_tmp
 
